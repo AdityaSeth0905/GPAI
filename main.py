@@ -1,56 +1,31 @@
-import speech_recognition as sr
-import json
+from custom_speech_recognition import speech_recognition
+from response_processing import process_response, load_audio_responses
+from chart_generator import generate_chart
+from word_storage import store_new_words
+import os
+import pygame
 
+def main():
+    responses_file = "responses.json"
+    new_words_file = "new_words.json"
+    audio_responses_dir = "audio_responses"
 
-# Create a dictionary to store new words
-with open("new_words.json", "a") as f:
-    new_words = {f}
+    # Initialize pygame mixer
+    pygame.mixer.init()
 
-# Create a speech recognition object
-recognizer = sr.Recognizer()
+    # Load audio responses
+    load_audio_responses(responses_file, audio_responses_dir)
 
-# Start listening for speech
-with sr.Microphone() as source:
-    recognizer.adjust_for_ambient_noise(source)
     while True:
-        # Get the user's input
-        audio = recognizer.listen(source)
+        response = speech_recognition(responses_file)
+        process_response(response)
+        store_new_words(response, new_words_file)
 
-        # Try to recognize the user's input
-        try:
-            text = recognizer.recognize_google(audio)
-        except sr.UnknownValueError:
-            print("I didn't understand that.")
-            continue
+        # Check if there is an audio response for the given response
+        audio_file = os.path.join(audio_responses_dir, response.lower() + ".mp3")
+        if os.path.exists(audio_file):
+            pygame.mixer.music.load(audio_file)
+            pygame.mixer.music.play()
 
-        # Check if the user's input is a new word
-        if text not in new_words:
-            # Add the new word to the dictionary
-            new_words[text] = 1
-
-            # Print a message to the user
-            print("I learned a new word: {}.".format(text))
-
-            # Save the dictionary to a JSON file
-            with open("new_words.json", "a") as f:
-                json.dump(new_words, f, indent=4)
-        else:
-            new_words[text] += 1
-
-
-        # Check if the user wants to exit the program
-        if text == "exit":
-            break
-        else:
-            if text=="close":
-                break
-            else:
-                if text == "shutdown":
-                    break
-                else:
-                    continue
-    
-# Print the dictionary of new words
-print("Here are the new words I learned:")
-for word in new_words:
-    print(word)
+if __name__ == "__main__":
+    main()
